@@ -1,0 +1,24 @@
+# Third-party engine (download separately — see README)
+hashcat/
+
+# Build output / artifacts
+build/
+dist/
+Output/
+*.spec.bak
+
+# Dead/unused
+tools/
+
+# Python
+__pycache__/
+*.pyc
+
+# hashcat runtime temp files
+*.restore
+arpr_*.txt
+arpr_*
+
+# Local / secrets
+.env
+*.env

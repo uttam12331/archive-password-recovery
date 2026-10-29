@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Archive Password Recovery</title>
+<style>
+:root{
+  color-scheme:dark; --bg:#171a1d; --panel:#1e2226; --panel2:#24292e; --well:#121518;
+  --line:#343b41; --line2:#454e56; --text:#e5e8e9; --muted:#9ca6ad; --dim:#707b83;
+  --accent:#d4b06a; --accent-ink:#171614; --good:#82b99a; --warn:#d7b56d; --bad:#d98982;
+  --mono:Consolas,"Cascadia Code","SFMono-Regular",monospace;
+  --sans:"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+  --radius:7px; --num:tabular-nums;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:14px/1.45 var(--sans)}
+/* themed scrollbars to match the console */
+*{scrollbar-width:thin;scrollbar-color:#3c444c var(--well)}
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-track{background:var(--well)}
+::-webkit-scrollbar-thumb{background:#363d45;border:3px solid var(--well)}
+::-webkit-scrollbar-thumb:hover{background:#4a535c}
+::-webkit-scrollbar-corner{background:var(--well)}
+body{min-width:780px}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.42}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app{width:100%;max-width:none;margin:0;padding:0 clamp(16px,2.4vw,40px) 30px}
+.topbar{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.mark{width:38px;height:38px;display:grid;place-items:center;background:linear-gradient(145deg,#e6c98c,#c1954a);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 10px -3px rgba(198,149,74,.6)}
+.foot-brand{display:inline-flex;align-items:center;gap:8px}
+.foot-mark{width:18px;height:18px;display:inline-grid;place-items:center;background:linear-gradient(145deg,#e6c98c,#c1954a);flex-shrink:0}
+.brand-title{font-size:15px;font-weight:650;letter-spacing:.015em}
+.brand-sub{font-size:11px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+.top-meta{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px}
+.connection{display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);display:inline-block}
+.dot.ready{background:var(--good)} .dot.wait{background:var(--warn)}
+.kicker{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.13em;font-weight:700}
+.pagehead{display:flex;align-items:flex-end;justify-content:space-between;padding:25px 0 20px;gap:20px}
+h1{font-size:25px;line-height:1.2;letter-spacing:-.035em;font-weight:620;margin:5px 0 0}
+.page-note{color:var(--muted);max-width:390px;text-align:right;font-size:12px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);background:var(--panel);margin-bottom:18px}
+.step{min-height:58px;display:flex;align-items:center;gap:12px;padding:12px 16px;position:relative;border-right:1px solid var(--line)}
+.step:last-child{border-right:0}
+.step-no{font:12px var(--mono);color:var(--dim);border:1px solid var(--line2);width:27px;height:27px;display:grid;place-items:center;flex-shrink:0}
+.step.active .step-no{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.step.done .step-no{color:var(--good);border-color:#587563}
+.step-name{font-weight:600;font-size:13px}.step-detail{color:var(--muted);font-size:11px;margin-top:1px}
+.main-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(330px,.92fr);gap:18px;align-items:start}
+.column{display:flex;flex-direction:column;gap:16px;min-width:0}
+.section{border:1px solid var(--line);background:var(--panel);min-width:0}
+.section-head{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.section-title{font-size:13px;font-weight:650;letter-spacing:.01em}.section-desc{font-size:11px;color:var(--muted);margin-top:3px}
+.section-body{padding:16px}
+.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);padding:4px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.tag.good{color:var(--good);border-color:#496856;background:#1d2923}
+.tag.warn{color:var(--warn);border-color:#695b3e;background:#2b271e}
+.tag.bad{color:var(--bad);border-color:#704843;background:#2b211f}
+.file-drop{border:1px dashed var(--line2);background:var(--well);padding:18px;display:flex;align-items:center;gap:14px;min-height:100px}
+.file-icon{width:42px;height:48px;border:1px solid #5c646b;color:var(--accent);display:grid;place-items:center;flex-shrink:0}
+.file-info{flex:1;min-width:0}.file-name{font-weight:600;overflow-wrap:anywhere}.file-meta{font-size:11px;color:var(--muted);margin-top:4px;font-variant-numeric:var(--num)}
+.btn{border:1px solid var(--line2);background:#292f34;color:var(--text);padding:9px 13px;min-height:42px;font-weight:600;font-size:12px;transition:background .15s,border-color .15s}
+.btn:hover:not(:disabled){background:#343b41;border-color:#647079}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){background:#e0c184}
+.btn.quiet{background:transparent}
+.btn.danger{color:var(--bad);border-color:#664542;background:transparent}
+.btn.small{min-height:34px;padding:6px 10px;font-size:11px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.field{min-width:0}.field label,.field-label{display:block;font-size:11px;font-weight:650;color:#c8ced2;margin-bottom:7px}
+.help{font-size:11px;color:var(--muted);margin-top:6px}
+.mode-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);padding:3px;gap:3px;background:var(--well);margin-bottom:16px}
+.mode-tab{min-height:40px;background:transparent;border:0;color:var(--muted);font-weight:600;font-size:12px}
+.mode-tab[aria-pressed="true"]{background:#30363b;color:var(--text);box-shadow:inset 0 0 0 1px #505961}
+.group-toggles{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.group-toggle{min-height:34px;padding:6px 10px;border:1px solid var(--line2);background:#252a2f;color:var(--muted);font-size:11px}
+.group-toggle[aria-pressed="true"]{border-color:#87764f;color:#f0d59c;background:#302d25}
+.charset{border:1px solid var(--line);background:var(--well);padding:10px}
+.charset-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.charset-title{font-size:11px;font-weight:650}.charset-note{font-size:10px;color:var(--muted)}
+.char-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px}
+.char-key{min-width:0;height:29px;padding:0;border:1px solid #333a40;background:#1d2226;color:#c6cdd1;font:12px var(--mono)}
+.char-key:hover:not(:disabled){border-color:#8c7950;color:#f0d59c}
+.char-key[aria-pressed="true"]{background:#373226;border-color:#8b7951;color:#f0d59c}
+.char-key.space-key{grid-column:span 3;font-family:var(--sans);font-size:10px}
+.pool-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)}
+.pool-count{font:13px var(--mono);color:var(--accent)}.pool-exact{font:11px var(--mono);color:var(--muted);overflow-wrap:anywhere;margin-top:5px;max-height:36px;overflow:auto}
+.length-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}
+input[type=number],input[type=text],select{width:100%;height:42px;padding:0 11px;background:var(--well);border:1px solid var(--line2);color:var(--text);border-radius:0;font-variant-numeric:var(--num)}
+input[type=number]:hover,select:hover{border-color:#657078}
+.estimate{margin-top:15px;border:1px solid var(--line);background:#191d20;padding:13px}
+.estimate-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.estimate-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.metric-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.metric-value{font:14px var(--mono);font-variant-numeric:tabular-nums;margin-top:5px;overflow-wrap:anywhere}
+.estimate-foot{font-size:11px;color:var(--muted);margin-top:11px}
+.wordlist-row{display:flex;gap:8px;align-items:center}
+.wordlist-path{min-width:0;flex:1;background:var(--well);border:1px solid var(--line);padding:11px;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.check-row{display:flex;gap:10px;align-items:flex-start;margin-top:15px;padding:12px;border:1px solid var(--line);background:#1a1e21}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:2px 0 0;flex-shrink:0}
+.check-copy strong{display:block;font-size:12px;font-weight:600}.check-copy span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.device-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.device-option{position:relative}
+.device-option input{position:absolute;opacity:0;pointer-events:none}
+.device-option label{display:flex;min-height:68px;flex-direction:column;justify-content:center;gap:4px;padding:11px;border:1px solid var(--line2);background:var(--well);cursor:pointer}
+.device-option input:checked+label{border-color:#927f54;background:#2b2922}
+.device-option input:focus-visible+label{outline:2px solid var(--accent);outline-offset:3px}
+.device-option strong{font-size:12px}.device-option span{font-size:10px;color:var(--muted)}
+.device-option input:disabled+label{opacity:.35;cursor:not-allowed}
+.intensity{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.intensity button{min-height:39px;border:1px solid var(--line2);background:var(--well);color:var(--muted);font-size:11px}
+.intensity button[aria-pressed=true]{background:#373226;border-color:#8b7951;color:#f0d59c}
+.run-panel{border:1px solid var(--line);background:var(--panel)}
+.run-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);gap:12px}
+.run-status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:650}
+.run-body{padding:16px}
+.progress-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+.progress-pct{font:22px var(--mono);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.progress-label{font-size:11px;color:var(--muted)}
+.progress-track{height:7px;background:#0f1214;border:1px solid #31383e;overflow:hidden}
+.progress-fill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+.progress-sub{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px;margin-top:7px}
+.run-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--line);margin-top:17px}
+.run-metric{padding:12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.run-metric:nth-child(2n){border-right:0}.run-metric:nth-last-child(-n+2){border-bottom:0}
+.run-metric .metric-value{font-size:15px}
+.run-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.result{display:none;margin-top:15px;padding:13px;border:1px solid var(--line);background:var(--well)}
+.result.show{display:block}
+.result.success{border-color:#4b6d59}.result.failure{border-color:#705e3c}.result.error{border-color:#754c47}
+.result-title{font-size:12px;font-weight:700;margin-bottom:8px}
+.password-row{display:flex;gap:8px;align-items:stretch}
+.password-value{flex:1;min-width:0;padding:11px;border:1px solid #4b6c58;background:#17211b;color:#b7dfc4;font:14px var(--mono);overflow-wrap:anywhere;user-select:all}
+.log-section{border:1px solid var(--line);background:var(--panel)}
+.log-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;background:transparent;border:0;color:var(--text);padding:14px 16px;min-height:48px}
+.log-toggle strong{font-size:12px}.log-toggle span{font-size:10px;color:var(--muted)}
+.log-content{display:none;border-top:1px solid var(--line)}.log-content.open{display:block}
+.log-toolbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--muted);font-size:10px}
+.log-output{padding:12px;max-height:190px;overflow:auto;background:#111416;font:11px/1.6 var(--mono);color:#aab5bb;white-space:pre-wrap;overflow-wrap:anywhere}
+.log-line{display:block}.log-line .stamp{color:#6f7d85}
+.footer{display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:10px;padding-top:15px}
+.hidden{display:none!important}
+@media(max-width:980px){.app{padding:0 16px 24px}.main-grid{grid-template-columns:1fr}.page-note{max-width:290px}.top-meta{gap:9px}}
+@media(max-width:650px){body{min-width:360px}.topbar{height:auto;min-height:66px}.top-meta .runtime-label{display:none}.pagehead{align-items:flex-start;flex-direction:column}.page-note{text-align:left}.step{padding:10px 8px;gap:7px}.step-detail{display:none}.step-name{font-size:11px}.section-body{padding:12px}.char-grid{grid-template-columns:repeat(8,minmax(0,1fr))}.estimate-grid{grid-template-columns:1fr 1fr}.device-list{grid-template-columns:1fr}.device-option label{min-height:54px}.footer{flex-direction:column}}
+/* ---- smooth, deliberate motion (keeps the sharp console look) ---- */
+.mode-tab,.group-toggle,.char-key,.intensity button,.device-option label,.btn,.tag,.step,.step-no,.section,.run-panel,.log-section,.file-drop,.estimate,.result{
+  transition:background .17s ease,border-color .17s ease,color .17s ease,box-shadow .2s ease,transform .13s cubic-bezier(.22,.61,.36,1),opacity .2s ease;
+}
+.btn:not(:disabled):hover,.device-option label:hover,.char-key:not(:disabled):hover,.group-toggle:not(:disabled):hover{transform:translateY(-1px)}
+.btn:not(:disabled):active,.char-key:not(:disabled):active,.group-toggle:not(:disabled):active,.intensity button:not(:disabled):active,.mode-tab:active{transform:translateY(1px)}
+.char-key[aria-pressed="true"],.group-toggle[aria-pressed="true"]{transform:none}
+.progress-fill{transition:width .45s cubic-bezier(.22,.61,.36,1)}
+.run-status .dot,.connection .dot{transition:background .25s ease,box-shadow .25s ease}
+.dot.wait{box-shadow:0 0 0 0 rgba(215,181,109,.5);animation:ping 1.7s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(215,181,109,.45)}70%{box-shadow:0 0 0 6px rgba(215,181,109,0)}100%{box-shadow:0 0 0 0 rgba(215,181,109,0)}}
+.section,.run-panel,.log-section{animation:rise .42s cubic-bezier(.22,.61,.36,1) both}
+.column:first-child .section:nth-child(1){animation-delay:.03s}
+.column:first-child .section:nth-child(2){animation-delay:.09s}
+.column:first-child .section:nth-child(3){animation-delay:.15s}
+.column:last-child .run-panel{animation-delay:.07s}
+.column:last-child .log-section{animation-delay:.13s}
+.column:last-child .section{animation-delay:.19s}
+#brutePanel,#wordPanel{animation:slidein .26s cubic-bezier(.22,.61,.36,1)}
+.result.show{animation:popin .3s cubic-bezier(.22,.61,.36,1)}
+@keyframes rise{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:none}}
+@keyframes slidein{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes popin{from{opacity:0;transform:translateY(7px) scale(.99)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="9.6" fill="#1c1a16"/><path d="M7.8 10.5V7a4.2 4.2 0 0 1 8.4 0v3.5" stroke="#1c1a16" stroke-width="2.1"/><circle cx="12" cy="14.7" r="1.5" fill="#e6c98c"/><rect x="11.3" y="15.4" width="1.4" height="3" fill="#e6c98c"/></svg>
+      </div>
+      <div><div class="brand-title">Archive Password Recovery</div><div class="brand-sub">Local recovery console <span style="color:var(--dim)">/</span> v1.0</div></div>
+    </div>
+    <div class="top-meta">
+      <div class="connection"><span class="dot wait" id="runtimeDot"></span><span id="runtimeText">Waiting for runtime</span></div>
+      <span class="runtime-label">OFFLINE MODE</span>
+    </div>
+  </header>
+
+  <div class="pagehead">
+    <div><div class="kicker">Recovery workspace / 01</div><h1>Recover an encrypted file</h1></div>
+    <div class="page-note">Run locally against your own files. Your archive, wordlist and recovery output stay on this machine.</div>
+  </div>
+
+  <nav class="steps" aria-label="Recovery setup steps">
+    <div class="step active" id="step1"><div class="step-no">01</div><div><div class="step-name">Choose file</div><div class="step-detail">Target archive or PDF</div></div></div>
+    <div class="step" id="step2"><div class="step-no">02</div><div><div class="step-name">How to search</div><div class="step-detail">Define search space</div></div></div>
+    <div class="step" id="step3"><div class="step-no">03</div><div><div class="step-name">Compute</div><div class="step-detail">Select local hardware</div></div></div>
+  </nav>
+
+  <main class="main-grid">
+    <div class="column">
+      <section class="section" aria-labelledby="fileHeading">
+        <div class="section-head"><div><div class="section-title" id="fileHeading">01 / Target file</div><div class="section-desc">Select an encrypted RAR archive or PDF document.</div></div><span class="tag" id="fileState">No target</span></div>
+        <div class="section-body">
+          <div class="file-drop">
+            <div class="file-icon" aria-hidden="true"><svg width="25" height="28" viewBox="0 0 24 28" fill="none"><path d="M4 1.5h10l6 6V26H4V1.5Z" stroke="currentColor" stroke-width="1.4"/><path d="M14 1.5v6h6M8 13h8M8 17h8M8 21h5" stroke="currentColor" stroke-width="1.4"/></svg></div>
+            <div class="file-info"><div class="file-name" id="fileName">No file selected</div><div class="file-meta" id="fileMeta">RAR or PDF · file stays local</div></div>
+            <button class="btn" id="pickFileBtn" type="button">Browse files</button>
+          </div>
+          <div class="help" id="fileHelp" role="status">Choose a file to unlock search configuration.</div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="searchHeading">
+        <div class="section-head"><div><div class="section-title" id="searchHeading">02 / Search strategy</div><div class="section-desc">Narrow the candidate space before spending compute time.</div></div><span class="tag" id="searchState">Configure</span></div>
+        <div class="section-body">
+          <div class="mode-tabs" role="group" aria-label="Search mode">
+            <button class="mode-tab" id="bruteTab" type="button" aria-pressed="true">Brute force</button>
+            <button class="mode-tab" id="wordTab" type="button" aria-pressed="false">Wordlist</button>
+          </div>
+
+          <div id="brutePanel">
+            <div class="field-label">Character groups</div>
+            <div class="group-toggles" role="group" aria-label="Quick character groups">
+              <button class="group-toggle" type="button" data-group="lower" aria-pressed="true">a–z</button>
+              <button class="group-toggle" type="button" data-group="upper" aria-pressed="false">A–Z</button>
+              <button class="group-toggle" type="button" data-group="digits" aria-pressed="false">0–9</button>
+              <button class="group-toggle" type="button" data-group="symbols" aria-pressed="false">Symbols</button>
+            </div>
+            <div class="charset">
+              <div class="charset-top"><div class="charset-title">Exact character pool</div><div class="charset-note">Select / deselect individual keys</div></div>
+              <div class="char-grid" id="charGrid" role="group" aria-label="Individual characters"></div>
+              <div class="pool-summary"><div><div class="metric-label">Pool size</div><div class="pool-count" id="poolCount">26 characters</div></div><button class="btn quiet small" id="clearPoolBtn" type="button">Clear pool</button></div>
+              <div class="pool-exact" id="poolExact" aria-label="Exact selected character pool"></div>
+            </div>
+            <div class="length-row">
+              <div class="field"><label for="minLen">Password length · from</label><input id="minLen" type="number" min="1" max="32" value="1"></div>
+              <div class="field"><label for="maxLen">Password length · to</label><input id="maxLen" type="number" min="1" max="32" value="8"></div>
+            </div>
+            <div class="estimate" aria-live="polite">
+              <div class="estimate-head"><div class="section-title">Search-space estimate</div><span class="tag" id="feasTag">Waiting</span></div>
+              <div class="estimate-grid">
+                <div><div class="metric-label">Pool size</div><div class="metric-value" id="estPool">26 chars</div></div>
+                <div><div class="metric-label">Combinations</div><div class="metric-value" id="estComb">—</div></div>
+                <div><div class="metric-label">Estimated time</div><div class="metric-value" id="estEta">—</div></div>
+              </div>
+              <div class="estimate-foot" id="estFoot">Select a target file and character pool to estimate the search.</div>
+            </div>
+          </div>
+
+          <div id="wordPanel" class="hidden">
+            <div class="field-label">Wordlist file</div>
+            <div class="wordlist-row"><div class="wordlist-path" id="wordlistName">No wordlist selected</div><button class="btn" id="pickWordBtn" type="button">Browse</button></div>
+            <div class="help">Use a local text wordlist. The backend determines supported encoding and file handling.</div>
+            <label class="check-row" for="useRules"><input id="useRules" type="checkbox"><span class="check-copy"><strong>Common variations (best64 rules)</strong><span>Try common mutations such as capitalization and appended digits. May increase total work.</span></span></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="computeHeading">
+        <div class="section-head"><div><div class="section-title" id="computeHeading">03 / Compute configuration</div><div class="section-desc">Choose available hardware and recovery intensity.</div></div><span class="tag" id="deviceState">Detecting</span></div>
+        <div class="section-body">
+          <div class="field-label">Processing device</div>
+          <div class="device-list" role="radiogroup" aria-label="Processing device">
+            <div class="device-option"><input type="radio" name="device" id="deviceCpu" value="cpu" disabled><label for="deviceCpu"><strong>CPU</strong><span id="cpuLabel">Detecting device…</span></label></div>
+            <div class="device-option"><input type="radio" name="device" id="deviceGpu" value="gpu" disabled><label for="deviceGpu"><strong>GPU</strong><span id="gpuLabel">Detecting device…</span></label></div>
+            <div class="device-option"><input type="radio" name="device" id="deviceBoth" value="both" disabled><label for="deviceBoth"><strong>Both</strong><span>CPU + GPU</span></label></div>
+          </div>
+          <div class="help" id="deviceHelp">Waiting for hardware detection from the local runtime.</div>
+          <div class="field" style="margin-top:17px"><div class="field-label">Intensity</div><div class="intensity" role="group" aria-label="Recovery intensity">
+            <button type="button" data-perf="1" aria-pressed="false">Low</button><button type="button" data-perf="2" aria-pressed="true">Balanced</button><button type="button" data-perf="3" aria-pressed="false">High</button><button type="button" data-perf="4" aria-pressed="false">Max</button>
+          </div><div class="help">Higher intensity may increase system load and heat.</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="column">
+      <section class="run-panel" aria-labelledby="runHeading">
+        <div class="run-top"><div><div class="section-title" id="runHeading">Recovery monitor</div><div class="section-desc">Live status from the local hashcat process.</div></div><div class="run-status"><span class="dot" id="runDot"></span><span id="runStatusText">Ready to configure</span></div></div>
+        <div class="run-body">
+          <div class="progress-meta"><div><div class="metric-label">Search progress</div><div class="progress-label" id="progressLabel">Waiting for a run</div></div><div class="progress-pct" id="progressPct">0.00%</div></div>
+          <div class="progress-track" role="progressbar" aria-label="Search progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-sub"><span id="progressTried">0 tried</span><span id="progressTotal">— total</span></div>
+          <div class="run-metrics">
+            <div class="run-metric"><div class="metric-label">Speed</div><div class="metric-value" id="runSpeed">— H/s</div></div>
+            <div class="run-metric"><div class="metric-label">Time remaining</div><div class="metric-value" id="runEta">—</div></div>
+            <div class="run-metric"><div class="metric-label">Estimated finish</div><div class="metric-value" id="runFinish">—</div></div>
+            <div class="run-metric"><div class="metric-label">Elapsed</div><div class="metric-value" id="runElapsed">00:00:00</div></div>
+          </div>
+          <div class="run-actions">
+            <button class="btn primary" id="startBtn" type="button" disabled>Start recovery</button>
+            <button class="btn" id="pauseBtn" type="button" disabled>Pause</button>
+            <button class="btn" id="resumeBtn" type="button" disabled>Resume</button>
+            <button class="btn danger" id="stopBtn" type="button" disabled>Stop</button>
+          </div>
+          <div class="result" id="resultBox" role="status" aria-live="polite"><div class="result-title" id="resultTitle"></div><div id="resultBody"></div></div>
+        </div>
+      </section>
+
+      <section class="log-section">
+        <button class="log-toggle" type="button" id="logToggle" aria-expanded="false" aria-controls="logContent"><span><strong>Technical log</strong><span style="margin-left:9px" id="logCount">0 entries</span></span><span id="logToggleLabel">Expand +</span></button>
+        <div class="log-content" id="logContent">
+          <div class="log-toolbar"><span>LOCAL PROCESS OUTPUT</span><button type="button" class="btn quiet small" id="clearLogBtn">Clear log</button></div>
+          <div class="log-output" id="logOutput" aria-live="polite" aria-label="Technical log output"><span style="color:var(--dim)">Waiting for runtime messages…</span></div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="section-head"><div><div class="section-title">Recovery notes</div><div class="section-desc">Operational reminders</div></div><span class="tag">Local</span></div>
+        <div class="section-body" style="font-size:12px;color:var(--muted)">
+          <div style="display:flex;gap:10px;margin-bottom:11px"><span style="color:var(--accent);font:12px var(--mono)">01</span><span>Start with a focused character pool or a relevant wordlist to reduce search time.</span></div>
+          <div style="display:flex;gap:10px;margin-bottom:11px"><span style="color:var(--accent);font:12px var(--mono)">02</span><span>GPU availability depends on local drivers and hashcat support.</span></div>
+          <div style="display:flex;gap:10px"><span style="color:var(--accent);font:12px var(--mono)">03</span><span>Estimates are indicative. Actual speed varies with file format, hardware and workload.</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><span class="foot-brand"><span class="foot-mark" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="4.5" y="10.5" width="15" height="9.6" fill="#1c1a16"/><path d="M7.8 10.5V7a4.2 4.2 0 0 1 8.4 0v3.5" stroke="#1c1a16" stroke-width="2.4"/></svg></span>ARCHIVE PASSWORD RECOVERY <span style="color:var(--line2)">/</span> LOCAL WORKSTATION</span><span>MIT · hashcat engine · all times in your local time</span></footer>
+</div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const api = () => window.pywebview && window.pywebview.api;
+  const state = {
+    initialized:false, runtime:false, devices:{cpu:false,gpu:false}, file:null, wordlist:null,
+    mode:'brute', perf:2, running:false, paused:false, startedAt:null, elapsedBefore:0,
+    latestEta:null, timer:null, estimateTimer:null, logLines:[], lastEstimate:null
+  };
+  const GROUPS = {
+    lower:'abcdefghijklmnopqrstuvwxyz',
+    upper:'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    digits:'0123456789',
+    symbols:'!"#$%&\\\'()*+,-./:;<=>?@[\\\\]^_`{|}~ '
+  };
+  const CHARACTERS = Array.from(new Set(GROUPS.lower+GROUPS.upper+GROUPS.digits+'!"#$%&\\\'()*+,-./:;<=>?@[\\\\]^_`{|}~ '));
+  let selected = new Set(GROUPS.lower);
+  let lastStatusAt = null;
+
+  function callApi(name, ...args) {
+    const a = api();
+    if (!a || typeof a[name] !== 'function') return Promise.reject(new Error('Local runtime method unavailable: '+name));
+    try { return Promise.resolve(a[name](...args)); } catch (e) { return Promise.reject(e); }
+  }
+  function runtimeReady() {
+    state.runtime = !!api();
+    $('runtimeDot').className = 'dot '+(state.runtime?'ready':'wait');
+    $('runtimeText').textContent = state.runtime?'Runtime connected':'Waiting for runtime';
+    $('startBtn').disabled = !state.runtime || !state.file || !deviceAvailable();
+  }
+  async function init() {
+    if (state.initialized) return;
+    state.initialized = true;
+    runtimeReady();
+    if (!api()) return;
+    addLog('UI runtime connected; requesting device detection.');
+    try { await callApi('get_devices'); }
+    catch (e) { addLog('Device detection request failed: '+messageOf(e)); $('deviceState').textContent='Unavailable'; $('deviceHelp').textContent='Could not request hardware detection. Check the Python runtime.'; }
+    updateStartAvailability();
+    updateEstimate();
+  }
+  function messageOf(e) { return e && e.message ? e.message : String(e || 'Unknown error'); }
+  function formatBytes(n) {
+    if (n === undefined || n === null || !Number.isFinite(Number(n))) return 'Size unavailable';
+    let v=Number(n), units=['B','KB','MB','GB','TB'], i=0;
+    while(v>=1024&&i<units.length-1){v/=1024;i++}
+    return (i===0?Math.round(v):v.toFixed(v<10?2:1))+' '+units[i];
+  }
+  function formatNumber(n) {
+    if (n === undefined || n === null || n === '' || !Number.isFinite(Number(n))) return '—';
+    return Math.round(Number(n)).toLocaleString('en-US');
+  }
+  function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds)) || seconds < 0) return '—';
+    seconds=Math.floor(seconds);
+    if(seconds<60)return seconds+'s';
+    if(seconds<3600)return Math.floor(seconds/60)+'m '+(seconds%60)+'s';
+    if(seconds<86400)return Math.floor(seconds/3600)+'h '+Math.floor(seconds%3600/60)+'m';
+    const days=Math.floor(seconds/86400), hours=Math.floor(seconds%86400/3600);
+    return days+'d '+hours+'h';
+  }
+  function formatClock(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:undefined});
+  }
+  function formatElapsed(ms) {
+    let s=Math.max(0,Math.floor(ms/1000)), h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;
+    return [h,m,sec].map(x=>String(x).padStart(2,'0')).join(':');
+  }
+  function setTag(el, text, cls='') { el.textContent=text; el.className='tag'+(cls?' '+cls:''); }
+  function activeDevice() { const el=document.querySelector('input[name="device"]:checked'); return el?el.value:''; }
+  function deviceAvailable() {
+    const d=activeDevice();
+    return d==='cpu'?state.devices.cpu:d==='gpu'?state.devices.gpu:d==='both'?(state.devices.cpu&&state.devices.gpu):false;
+  }
+  function setDevices(d) {
+    state.devices={cpu:!!(d&&d.cpu),gpu:!!(d&&d.gpu)};
+    $('deviceCpu').disabled=!state.devices.cpu;
+    $('deviceGpu').disabled=!state.devices.gpu;
+    $('deviceBoth').disabled=!(state.devices.cpu&&state.devices.gpu);
+    $('cpuLabel').textContent=state.devices.cpu?'Available':'Not detected';
+    $('gpuLabel').textContent=state.devices.gpu?'Available':'Not detected';
+    if(!deviceAvailable()) {
+      const preferred=state.devices.gpu?'gpu':state.devices.cpu?'cpu':'';
+      if(preferred) $('device'+preferred[0].toUpperCase()+preferred.slice(1)).checked=true;
+      else document.querySelectorAll('input[name="device"]').forEach(x=>x.checked=false);
+    }
+    const any=state.devices.cpu||state.devices.gpu;
+    setTag($('deviceState'),any?'Detected':'No device',any?'good':'bad');
+    $('deviceHelp').textContent=any
+      ? (state.devices.cpu&&state.devices.gpu?'CPU and GPU detected.':'One processing device detected.')+' Choose only a detected device.'
+      :'No supported CPU/GPU was reported by the backend.';
+    updateStartAvailability();
+  }
+  function renderChars() {
+    const grid=$('charGrid'); grid.replaceChildren();
+    CHARACTERS.forEach(ch=>{
+      const b=document.createElement('button'); b.type='button'; b.className='char-key';
+      b.dataset.char=ch; b.setAttribute('aria-pressed',String(selected.has(ch)));
+      b.setAttribute('aria-label',ch===' '?'Space':ch==='\\'?'Backslash':ch==="'"?'Apostrophe':ch==='\"'?'Double quote':ch);
+      b.title=ch===' '?'Space':ch;
+      if(ch===' ') { b.textContent='␠ Space'; b.classList.add('space-key'); }
+      else if(ch==='"') b.textContent='″';
+      else if(ch==="'") b.textContent='′';
+      else if(ch==='\\') b.textContent='\\\\';
+      else b.textContent=ch;
+      b.addEventListener('click',()=>{ if(isLocked())return; selected.has(ch)?selected.delete(ch):selected.add(ch); renderChars(); updateEstimateDebounced(); });
+      grid.appendChild(b);
+    });
+    document.querySelectorAll('[data-group]').forEach(b=>{
+      const chars=Array.from(GROUPS[b.dataset.group]);
+      b.setAttribute('aria-pressed',String(chars.every(c=>selected.has(c))));
+    });
+    $('poolCount').textContent=selected.size+' character'+(selected.size===1?'':'s');
+    $('poolExact').textContent=Array.from(selected).join('').replace(/ /g,'␠') || 'No characters selected';
+    $('estPool').textContent=selected.size+' chars';
+  }
+  function params() {
+    const modeNumber = state.file && Number.isInteger(Number(state.file.mode)) ? Number(state.file.mode) : 0;
+    return {
+      mode:modeNumber,
+      attack:state.mode==='brute'?'brute':'wordlist',
+      device:activeDevice()||'cpu',
+      perf:state.perf,
+      pool:Array.from(selected).join(''),
+      min_len:clampInt($('minLen').value,1,32,1),
+      max_len:clampInt($('maxLen').value,1,32,8),
+      wordlist:state.wordlist?state.wordlist.path:'',
+      use_rules:$('useRules').checked
+    };
+  }
+  function clampInt(v,min,max,fallback){const n=parseInt(v,10);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback}
+  function isLocked(){return state.running}
+  function lockConfig(locked) {
+    ['pickFileBtn','bruteTab','wordTab','pickWordBtn','minLen','maxLen','clearPoolBtn','useRules'].forEach(id=>$(id).disabled=locked);
+    document.querySelectorAll('[data-group],.char-key,[data-perf],input[name="device"]').forEach(el=>el.disabled=locked || (el.name==='device' && !deviceIsAvailable(el.value)));
+    $('startBtn').disabled=locked || !state.runtime || !state.file || !deviceAvailable();
+  }
+  function deviceIsAvailable(v){return v==='cpu'?state.devices.cpu:v==='gpu'?state.devices.gpu:state.devices.cpu&&state.devices.gpu}
+  function updateStartAvailability() { if(!state.running) $('startBtn').disabled=!state.runtime||!state.file||!deviceAvailable(); }
+  function updateStepState() {
+    $('step1').className='step'+(state.file?' done':' active');
+    $('step2').className='step'+(state.file?' active':'');
+    $('step3').className='step'+(state.file?'':'');
+    if(state.file){$('step2').className='step done';$('step3').className='step active'}
+  }
+  function setMode(mode) {
+    if(isLocked())return;
+    state.mode=mode;
+    $('bruteTab').setAttribute('aria-pressed',String(mode==='brute'));
+    $('wordTab').setAttribute('aria-pressed',String(mode==='wordlist'));
+    $('brutePanel').classList.toggle('hidden',mode!=='brute');
+    $('wordPanel').classList.toggle('hidden',mode!=='wordlist');
+    setTag($('searchState'),mode==='brute'?'Brute force':'Wordlist');
+    updateEstimateDebounced(); updateStartAvailability();
+  }
+  async function pickFile() {
+    if(isLocked())return;
+    try {
+      const result=await callApi('pick_file');
+      if(!result)return;
+      if(result.ok===false){showResult('error','File could not be prepared',result.error||'The selected file could not be processed.');addLog('File selection error ('+(result.name||'unknown')+'): '+(result.error||'unknown error'));return}
+      if(!result.ok||!result.path){addLog('File picker returned an unexpected response.');return}
+      // backend already validated the file type and extracted the hash (ok:true); trust it
+      state.file=result; state.wordlist=null;
+      $('fileName').textContent=result.name||result.path;
+      $('fileMeta').textContent=(String(result.format||'FILE').toUpperCase().replace(/^\./,'')+'  /  '+formatBytes(result.size)+'  /  '+(result.path||'local file'));
+      setTag($('fileState'),String(result.format||'Selected').replace(/^\./,'').toUpperCase(),'good');
+      $('fileHelp').textContent='Target selected. Configure a search strategy below.';
+      hideResult(); resetProgress();
+      addLog('Target selected: '+(result.name||result.path)+' ('+String(result.format||'unknown')+').');
+      updateStepState(); updateEstimateDebounced(); updateStartAvailability();
+    } catch(e){showResult('error','File picker failed',messageOf(e));addLog('pick_file failed: '+messageOf(e))}
+  }
+  async function pickWordlist() {
+    if(isLocked())return;
+    try {
+      const result=await callApi('pick_wordlist');
+      if(!result)return;
+      if(!result.path){addLog('Wordlist picker returned no path.');return}
+      state.wordlist=result;
+      $('wordlistName').textContent=result.name||result.path;
+      $('wordlistName').title=result.path;
+      addLog('Wordlist selected: '+(result.name||result.path));
+      updateStartAvailability();
+    } catch(e){showResult('error','Wordlist picker failed',messageOf(e));addLog('pick_wordlist failed: '+messageOf(e))}
+  }
+  function updateEstimateDebounced() {
+    if(state.estimateTimer)clearTimeout(state.estimateTimer);
+    state.estimateTimer=setTimeout(updateEstimate,250);
+  }
+  async function updateEstimate() {
+    if(isLocked())return;
+    const p=params();
+    if(state.mode!=='brute') {
+      setTag($('feasTag'),'Wordlist','');
+      $('estComb').textContent='Wordlist';$('estEta').textContent='Backend estimate';
+      $('estFoot').textContent=state.wordlist?'Wordlist selected; exact work estimate depends on the backend and rules.':'Choose a wordlist to configure this search.';
+      return;
+    }
+    if(!state.file || !p.pool.length || p.min_len>p.max_len) {
+      setTag($('feasTag'),'Needs input','');
+      $('estComb').textContent='—';$('estEta').textContent='—';
+      $('estFoot').textContent=!state.file?'Select a target file to estimate the search.':!p.pool.length?'Select at least one character.':'Minimum length must not exceed maximum length.';
+      return;
+    }
+    try {
+      const r=await callApi('estimate',p);
+      if(!r)return;
+      state.lastEstimate=r;
+      $('estPool').textContent=(r.pool_size!==undefined?formatNumber(r.pool_size):p.pool.length)+' chars';
+      $('estComb').textContent=r.keyspace!==undefined?formatNumber(r.keyspace):'—';
+      $('estEta').textContent=r.eta_label||'—';
+      const feas=String(r.feas||'').toLowerCase();
+      const map={ok:['Feasible','good'],med:['Long run','warn'],slow:['Very slow','bad']};
+      const item=map[feas]||['Estimated',''];
+      setTag($('feasTag'),item[0],item[1]);
+      $('estFoot').textContent='Estimated speed: '+(r.speed!==undefined?String(r.speed)+' H/s':'—')+'. Estimate can change once the run starts.';
+    } catch(e) {
+      setTag($('feasTag'),'Unavailable','');
+      $('estFoot').textContent='Estimate unavailable: '+messageOf(e);
+    }
+  }
+  function showResult(kind,title,body) {
+    const box=$('resultBox');box.className='result show '+(kind==='success'?'success':kind==='error'?'error':'failure');
+    $('resultTitle').textContent=title;$('resultBody').replaceChildren();
+    if(kind==='success') {
+      const row=document.createElement('div');row.className='password-row';
+      const val=document.createElement('div');val.className='password-value';val.textContent=body;val.id='recoveredPassword';
+      const copy=document.createElement('button');copy.className='btn';copy.type='button';copy.textContent='Copy password';copy.addEventListener('click',async()=>{
+        try { if(navigator.clipboard&&navigator.clipboard.writeText) await navigator.clipboard.writeText(body); else {const ta=document.createElement('textarea');ta.value=body;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()} copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy password',1200); }
+        catch(e){addLog('Clipboard copy failed: '+messageOf(e));copy.textContent='Copy failed'}
+      });
+      row.append(val,copy);$('resultBody').appendChild(row);
+    } else {const p=document.createElement('div');p.style.cssText='font-size:12px;color:var(--muted);overflow-wrap:anywhere';p.textContent=body||'';$('resultBody').appendChild(p)}
+  }
+  function hideResult(){ $('resultBox').className='result'; $('resultTitle').textContent='';$('resultBody').replaceChildren(); }
+  function resetProgress(){
+    $('progressPct').textContent='0.00%';$('progressFill').style.width='0%';$('progressBar').setAttribute('aria-valuenow','0');
+    $('progressLabel').textContent='Waiting for a run';$('progressTried').textContent='0 tried';$('progressTotal').textContent='— total';
+    $('runSpeed').textContent='— H/s';$('runEta').textContent='—';$('runFinish').textContent='—';$('runElapsed').textContent='00:00:00';
+  }
+  function setRunStatus(text,kind=''){$('runStatusText').textContent=text;$('runDot').className='dot'+(kind?' '+kind:'')}
+  function addLog(line) {
+    const stamp=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    state.logLines.push({stamp,line:String(line)});
+    if(state.logLines.length>500)state.logLines.shift();
+    renderLog();
+  }
+  function renderLog() {
+    const out=$('logOutput');out.replaceChildren();
+    if(!state.logLines.length){out.textContent='No log entries.'}
+    else state.logLines.forEach(item=>{const row=document.createElement('span');row.className='log-line';const stamp=document.createElement('span');stamp.className='stamp';stamp.textContent='['+item.stamp+'] ';row.append(stamp,document.createTextNode(item.line));out.appendChild(row)});
+    $('logCount').textContent=state.logLines.length+' entr'+(state.logLines.length===1?'y':'ies');
+    out.scrollTop=out.scrollHeight;
+  }
+  function onStatus(s) {
+    s=s||{};
+    const pct=Math.max(0,Math.min(100,Number(s.pct)||0));
+    $('progressPct').textContent=pct.toFixed(2)+'%';$('progressFill').style.width=pct+'%';$('progressBar').setAttribute('aria-valuenow',String(pct));
+    $('progressLabel').textContent='Search in progress';
+    $('progressTried').textContent=formatNumber(s.cur)+' tried';$('progressTotal').textContent=formatNumber(s.total)+' total';
+    $('runSpeed').textContent=(s.speed===undefined?'—':String(s.speed))+' H/s';
+    const eta=Number(s.eta);
+    state.latestEta=Number.isFinite(eta)&&eta>=0?eta:null;
+    $('runEta').textContent=state.latestEta===null?'—':formatDuration(state.latestEta);
+    $('runFinish').textContent=state.latestEta===null?'—':formatClock(new Date(Date.now()+state.latestEta*1000));
+    if(state.startedAt!==null)$('runElapsed').textContent=formatElapsed(state.elapsedBefore+Date.now()-state.startedAt);
+  }
+  function onFinish(r) {
+    r=r||{}; state.running=false;state.paused=false;
+    if(state.startedAt!==null){state.elapsedBefore+=Date.now()-state.startedAt;state.startedAt=null}
+    if(state.timer){clearInterval(state.timer);state.timer=null}
+    lockConfig(false);
+    $('pauseBtn').disabled=true;$('resumeBtn').disabled=true;$('stopBtn').disabled=true;
+    const status=String(r.status||'error');
+    if(status==='cracked') {
+      setRunStatus('Password recovered','ready');$('progressLabel').textContent='Password found';
+      showResult('success','Password recovered',String(r.password??''));
+      addLog('Recovery completed: password found.');
+    } else if(status==='done') {
+      setRunStatus('Search complete','');$('progressLabel').textContent='Search completed';
+      showResult('failure','Password not found',r.message||'The search finished without recovering the password.');
+      addLog('Recovery completed without a password.');
+    } else if(status==='no_restore') {
+      setRunStatus('No restore point','');showResult('failure','No recovery state available',r.message||'The backend reported that there is no saved recovery state to resume.');
+      addLog('No restore state: '+(r.message||'No details supplied.'));
+    } else if(status==='paused_or_stopped') {
+      setRunStatus('Stopped','');$('progressLabel').textContent='Run stopped';
+      addLog('Recovery paused or stopped by backend.');
+    } else {
+      setRunStatus('Run failed','');showResult('error','Recovery error',r.message||'The recovery process encountered an error.');
+      addLog('Recovery error: '+(r.message||'No details supplied.'));
+    }
+    updateStartAvailability();
+  }
+  async function startRun() {
+    if(state.running||!state.file)return;
+    if(!api()){showResult('error','Runtime unavailable','The Python backend is not connected.');return}
+    const p=params();
+    if(state.mode==='brute' && (!p.pool.length||p.min_len>p.max_len)){showResult('error','Check search settings','Select at least one character and ensure the length range is valid.');return}
+    if(state.mode==='wordlist'&&!p.wordlist){showResult('error','Choose a wordlist','Select a local wordlist before starting.');return}
+    if(!deviceAvailable()){showResult('error','No available device','Select a device reported as available by the backend.');return}
+    hideResult();
+    try {
+      const r=await callApi('start',p);
+      if(r&&r.error){showResult('error','Could not start recovery',r.error);addLog('Start rejected: '+r.error);return}
+      if(!r||r.ok!==true){showResult('error','Unexpected response','The backend did not confirm that recovery started.');addLog('Unexpected start response.');return}
+      state.running=true;state.paused=false;state.startedAt=Date.now();state.elapsedBefore=0;state.latestEta=null;
+      setRunStatus('Running','wait');$('progressLabel').textContent='Search in progress';
+      lockConfig(true);$('startBtn').disabled=true;$('pauseBtn').disabled=false;$('resumeBtn').disabled=true;$('stopBtn').disabled=false;
+      addLog('Recovery started. Attack='+p.attack+', device='+p.device+', intensity='+p.perf+'.');
+      state.timer=setInterval(()=>{if(state.startedAt!==null)$('runElapsed').textContent=formatElapsed(state.elapsedBefore+Date.now()-state.startedAt)},1000);
+    } catch(e){showResult('error','Could not start recovery',messageOf(e));addLog('start failed: '+messageOf(e))}
+  }
+  async function pauseRun() {
+    if(!state.running||state.paused)return;
+    try {const r=await callApi('pause');if(r&&r.error){addLog('Pause failed: '+r.error);return}
+      state.paused=true;if(state.startedAt!==null){state.elapsedBefore+=Date.now()-state.startedAt;state.startedAt=null}
+      setRunStatus('Paused','');$('progressLabel').textContent='Search paused';
+      $('pauseBtn').disabled=true;$('resumeBtn').disabled=false;addLog('Pause requested.');
+    } catch(e){addLog('pause failed: '+messageOf(e))}
+  }
+  async function resumeRun() {
+    if(!state.running||!state.paused)return;
+    try {const r=await callApi('resume');if(r&&r.error){addLog('Resume failed: '+r.error);showResult('error','Could not resume',r.error);return}
+      state.paused=false;state.startedAt=Date.now();setRunStatus('Running','wait');$('progressLabel').textContent='Search in progress';
+      $('pauseBtn').disabled=false;$('resumeBtn').disabled=true;addLog('Resume requested.');
+    } catch(e){addLog('resume failed: '+messageOf(e))}
+  }
+  async function stopRun() {
+    if(!state.running)return;
+    $('stopBtn').disabled=true;
+    try {await callApi('stop');addLog('Stop requested. Waiting for backend confirmation…')}
+    catch(e){$('stopBtn').disabled=false;addLog('stop failed: '+messageOf(e))}
+  }
+
+  window.AR=window.AR||{};
+  window.AR.onDevices = data => {setDevices(data||{});addLog('Device detection result: CPU='+(data&&data.cpu?'available':'unavailable')+', GPU='+(data&&data.gpu?'available':'unavailable')+'.')};
+  window.AR.onStatus = onStatus;
+  window.AR.onLog = line => addLog(line);
+  window.AR.onFinish = onFinish;
+
+  $('pickFileBtn').addEventListener('click',pickFile);
+  $('pickWordBtn').addEventListener('click',pickWordlist);
+  $('bruteTab').addEventListener('click',()=>setMode('brute'));
+  $('wordTab').addEventListener('click',()=>setMode('wordlist'));
+  document.querySelectorAll('[data-group]').forEach(b=>b.addEventListener('click',()=>{
+    if(isLocked())return;const chars=Array.from(GROUPS[b.dataset.group]);
+    if(chars.every(c=>selected.has(c)))chars.forEach(c=>selected.delete(c));else chars.forEach(c=>selected.add(c));
+    renderChars();updateEstimateDebounced();
+  }));
+  $('clearPoolBtn').addEventListener('click',()=>{if(isLocked())return;selected.clear();renderChars();updateEstimateDebounced()});
+  ['minLen','maxLen'].forEach(id=>$(id).addEventListener('input',updateEstimateDebounced));
+  $('useRules').addEventListener('change',updateEstimateDebounced);
+  document.querySelectorAll('[data-perf]').forEach(b=>b.addEventListener('click',()=>{
+    if(isLocked())return;state.perf=Number(b.dataset.perf);
+    document.querySelectorAll('[data-perf]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    updateEstimateDebounced();
+  }));
+  document.querySelectorAll('input[name="device"]').forEach(el=>el.addEventListener('change',updateStartAvailability));
+  $('startBtn').addEventListener('click',startRun);$('pauseBtn').addEventListener('click',pauseRun);
+  $('resumeBtn').addEventListener('click',resumeRun);$('stopBtn').addEventListener('click',stopRun);
+  $('logToggle').addEventListener('click',()=>{
+    const open=!$('logContent').classList.contains('open');$('logContent').classList.toggle('open',open);
+    $('logToggle').setAttribute('aria-expanded',String(open));$('logToggleLabel').textContent=open?'Collapse −':'Expand +';
+  });
+  $('clearLogBtn').addEventListener('click',()=>{state.logLines=[];renderLog()});
+  renderChars();resetProgress();setMode('brute');runtimeReady();
+  window.addEventListener('pywebviewready',init);
+  if(api()) init();
+})();
+</script>
+</body>
+</html>
